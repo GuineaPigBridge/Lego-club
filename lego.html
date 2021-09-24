@@ -1,0 +1,309 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Ski</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <style>
+        body,html{
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#canvas{
+    height: 100vh;
+    width: 100vw;
+    background-image: url("lanes.png");
+    image-rendering: crisp-edges;
+    image-resolution:inherit;
+}
+    </style>
+    <canvas id="canvas"></canvas>
+    <img src="truck.png" id="enemy"alt="enemy">
+    <img src="player_truck.png" id="player"alt="player">
+    <img src="" alt="">
+
+<script>
+        var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var keys = [];
+
+let worldWidth = canvas.width;
+    time = 0,
+    speed = 5,
+    spawnable = 30;
+    spawnCounter = 0,
+    spawnTimer = 16,
+    Carheight = 20,
+    playerxs = 20,
+    playerxy = 10,
+    px = 300,
+    py = 100,
+    pause = false,
+    dead = false,
+    maxscore = 0;
+
+    let objects = [];
+
+class Player{
+    constructor(w,h){
+        this.x = window.innerWidth / 2;
+        this.y = window.innerHeight/2;
+        this.height = h;
+        this.width = w;
+        this.accel = [0,0];
+        this.xmax = 7;
+        this.ymax1 = 3;
+        this.ymax2 = 2.2;
+        this.vel = [0,0];
+        this.acc2 = 0.3;
+    }
+    draw(){
+        let th = Math.atan(this.vel[0] / (this.vel[1] + speed));
+        const player = document.getElementById("player")
+        ctx.drawImage(player, this.x, this.y, this.width+50, this.height)
+        /*
+        ctx.beginPath();
+        ctx.moveTo(this.x,this.y);
+        ctx.lineTo(this.x + Math.sin(th)*this.height                                  ,  this.y + Math.cos(th)*this.height);
+        ctx.lineTo(this.x + Math.sin(th)*this.height+Math.cos(th)*(this.width/2 - 2)  ,  this.y + Math.cos(th)*this.height - Math.sin(th)*(this.width/2 - 2));
+        ctx.lineTo(this.x + Math.cos(th)*(this.width / 2 - 2)                         ,  this.y - Math.sin(th)*(this.width / 2 - 2));
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.moveTo(this.x + Math.cos(th)*(this.width/2 + 2)                             ,  this.y - Math.sin(th)*(this.width/2 + 2));
+        ctx.lineTo(this.x + Math.sin(th)*this.height + Math.cos(th)*(this.width/2 + 2)  ,  this.y + Math.cos(th)*this.height - Math.sin(th)*(this.width/2 + 2));
+        ctx.lineTo(this.x + Math.sin(th)*this.height + Math.cos(th) * this.width        ,  this.y + Math.cos(th)*this.height - Math.sin(th)*this.width);
+        ctx.lineTo(this.x + Math.cos(th)*(this.width)                                   ,  this.y - Math.sin(th)*this.width);
+        ctx.closePath();
+        ctx.fill();
+        */
+
+    }
+    move(){
+        if(keys[39] && this.vel[0] >= this.xmax){
+            this.vel[0] = this.xmax;
+        }
+        else if(keys[39] && this.vel[0] < this.xmax){
+            this.vel[0] += this.acc2;
+        }
+        else if(keys[37] && this.vel[0] <= (0 - this.xmax)){
+            this.vel[0] = 0 - this.xmax;
+        }
+        else if(keys[37] && this.vel[0] > (0 - this.xmax)){
+            this.vel[0] -= this.acc2;
+        }
+        else{
+            this.vel[0] *= 0.9;
+        }
+
+        if(keys[40] && this.vel[1] >= this.ymax1){
+            this.vel[1] = this.ymax1;
+        }
+        else if(keys[40] && this.vel[1] < this.ymax1){
+            this.vel[1] += this.acc2;
+        }
+        else if(keys[38] && this.vel[1] <= (0 - this.ymax2)){
+            this.vel[1] = 0 - this.ymax2;
+        }
+        else if(keys[38] && this.vel[1] > (0 - this.ymax2)){
+            this.vel[1] -= this.acc2;
+        }
+        else{
+            this.vel[1] *= 0.9;
+        }
+
+        if(this.x < 0){this.x -= this.x + 1};
+        if(this.x + this.width > window.innerWidth){this.x -= (this.x+this.width - window.innerWidth + 1)};
+
+        if(this. y < 0){this.y -= this.y + 1};
+        if(this.y + this.height > window.innerHeight){this.y -= (this.y + this.height - window.innerHeight + 1)}
+
+        this.x += this.vel[0];
+        this.y += this.vel[1];
+    }
+    colcheck(){
+        let xcol = false;
+        let ycol = false;
+        let collision = false;
+        for(let i = 0; i < objects.length; i++){
+            if((this.x > objects[i].x - objects[i].width && this.x < objects[i].x + objects[i].width) || (this.x + this.width > objects[i].x - objects[i].width/2 && this.x + this.width < objects[i].x + objects[i].width/2)){
+                xcol = true;
+            }
+            else{xcol = false}
+            if((this.y > objects[i].y && this.y < objects[i].y + objects[i].height) || (this.y + this.height > objects[i].y && this.y + this.height < objects[i].y + objects[i].height)){
+                ycol = true;
+            }
+            else{xcol = false}
+            if(xcol && ycol){
+                collision = true;
+            }
+        }
+        if(collision){dead = true}
+        return collision;
+    }
+}
+
+class Car{
+    constructor(x){
+        this.x = x;
+        this.y = canvas.height;
+        this.height = 120;
+        this.width =80;
+    }
+    draw(){
+        const enemy = document.getElementById("enemy");
+        ctx.drawImage(enemy, this.x, this.y, this.width, this.height+10)
+    }
+}
+
+//Spawns a new Car, depending on the 'spawnables' variable, and makes sure spawned Cars leave 30px space in between
+function spawn(){
+    spawnCounter = 0;
+    spawnTimer = 10 * (Carheight/speed) + Math.random() * speed;
+    posis = [];
+
+    for(let i = 0; i < Math.ceil(Math.random()*spawnable); i++){
+        let newCar = new Car(0);
+        let xspawn = 0;
+        let overlap = 0;
+        do{
+            overlap = 0;
+            xspawn = Math.random()*worldWidth * 1.2;
+            for(let k = 0; k < posis.length; k++){
+                if(xspawn >= (posis[k] - 17) && xspawn <= (posis[k] + 17)){
+                    overlap += 1;
+                }
+            }
+        }
+        while(overlap > 0);
+        posis.push(xspawn);
+
+        newCar.x = xspawn;
+        newCar.y = canvas.height;
+        objects.push(newCar);
+    }
+}
+
+function move(){
+    for(let i = 0; i < objects.length; i++){
+            if(objects[i].hasOwnProperty('y') && (typeof objects[i].draw === 'function')){
+            if(objects[i].y + objects[i].height < 0){
+                objects.shift();
+                console.log(objects.length);
+            }
+            objects[i].y -= speed;
+        }
+    }
+}
+
+function ded(){
+    objects = [];
+    player1.x = window.innerWidth / 2;
+    player1.y = window.innerHeight/2;
+
+    ctx.fillStyle = '#C33';
+    ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+    ctx.font = '50px Arial';
+    ctx.fillStyle = "white";
+    ctx.fillText('Crashed!!',window.innerWidth / 2 - 120, window.innerHeight/2 - 100);
+    ctx.font = "30px Arial";
+    ctx.fillText('score: ' + time, window.innerWidth/2 - 120, window.innerHeight/2 - 50);
+    ctx.fillText('record score: ' + maxscore, window.innerWidth / 2 - 120, window.innerHeight/2-15);
+  ctx.fillText('Press R to restart. ', window.innerWidth / 2 - 120, window.innerHeight/2+50);
+
+    if(keys[82]){
+        dead = false;
+        time = 0;
+        speed = 5;
+        spawnable = 0;
+        spawnCounter = 0;
+    }
+}
+
+
+let player1 = new Player(30,160);
+
+function animate(){
+    if(!dead){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        player1.colcheck();
+        if(!pause){
+            time += 1;
+            spawnCounter += 1;
+            if(spawnCounter >= spawnTimer){
+                spawn();
+            }
+            move();
+            player1.move();
+            spawnable = Math.min(time / 180, 53);
+            speed = Math.max(5, Math.min(time/180,15));
+            player1.xmax = speed * 1.4;
+            player1.ymax = speed * 0.8;
+            player1.acc2 = speed * 0.06;
+        }if(pause){
+            ctx.fillText('paused', window.innerWidth/2,window.innerHeight/2);
+        }
+        for(let i = 0; i < objects.length; i++){
+            objects[i].draw();
+        }
+        player1.draw();
+        ctx.font = time > maxscore ? "600 20px Arial" : "400 14px Arial";
+        ctx.fillStyle = time > maxscore ? 'red' : 'blue';
+        ctx.fillText('score: ' + time, 10,20);
+
+        ctx.font = "400 14px Arial";
+        ctx.fillStyle = 'blue';
+        ctx.fillText('hi-score: ' + maxscore,10,40);
+    }
+    else{
+        maxscore = time > maxscore ? time : maxscore;
+        ded();
+    }
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+
+
+//this is a little bit of code to make the screen be nice
+
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+worldWidth = canvas.width;
+
+window.addEventListener('resize',function(){
+    canvas.width =  window.innerWidth;
+    canvas.height = window.innerHeight;
+    worldWidth = canvas.width;
+});
+
+document.addEventListener("keydown", keyDownHandler, false);
+document.addEventListener("keyup", keyUpHandler, false);
+
+function keyDownHandler(e){
+    keys[e.which] = true;
+}
+
+function keyUpHandler(e){
+    keys[e.which] = false;
+} 
+
+document.addEventListener('keyup',function(e){
+    switch(e.which){
+        case 32:
+            
+            pause = !pause;
+            console.log(pause ? 'pause' : 'play');
+            break;
+    }
+})
+    </script>
+</body>
+</html>
